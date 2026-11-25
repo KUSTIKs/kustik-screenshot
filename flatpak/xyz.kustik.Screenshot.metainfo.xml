@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>xyz.kustik.Screenshot</id>
+  <name>Kustik Screenshot</name>
+  <summary>Screenshots and screen recordings</summary>
+  <developer id="xyz.kustik">
+    <name>kustik</name>
+  </developer>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <description>
+    <p>A beautiful screenshot tool. Press Super+Shift+S anywhere: the screen freezes,
+    you select an area or a window, and it's copied, ready to paste.</p>
+    <ul>
+      <li>Annotate right on the frozen screen: arrows, boxes, pen, highlighter, text and pixelate</li>
+      <li>Record an area or the whole screen, with microphone and system sound; the controls stay out of the video</li>
+      <li>Trim a recording and share it as a video or a GIF</li>
+      <li>Pin a capture above every window while you work</li>
+    </ul>
+    <p>Works on GNOME, KDE Plasma, COSMIC, niri, Sway, Hyprland, river and X11 sessions.
+    Everything stays on your computer: no account, no network, no telemetry.</p>
+  </description>
+  <launchable type="desktop-id">xyz.kustik.Screenshot.desktop</launchable>
+  <provides>
+    <binary>kustik-screenshot</binary>
+  </provides>
+  <url type="homepage">https://screenshot.kustik.xyz/</url>
+  <url type="bugtracker">https://github.com/KUSTIKs/kustik-screenshot/issues</url>
+  <url type="vcs-browser">https://github.com/KUSTIKs/kustik-screenshot</url>
+  <branding>
+    <color type="primary" scheme_preference="light">#d7d9e4</color>
+    <color type="primary" scheme_preference="dark">#17171c</color>
+  </branding>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Point it out: arrows, text and highlights right on the frozen screen</caption>
+      <image>https://raw.githubusercontent.com/KUSTIKs/kustik-screenshot/v0.2.0/docs/screenshots/annotate.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Record a part of the screen; the controls stay out of the video</caption>
+      <image>https://raw.githubusercontent.com/KUSTIKs/kustik-screenshot/v0.2.0/docs/screenshots/record.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Trim a recording and copy it as a GIF</caption>
+      <image>https://raw.githubusercontent.com/KUSTIKs/kustik-screenshot/v0.2.0/docs/screenshots/trim.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Copied: paste it anywhere</caption>
+      <image>https://raw.githubusercontent.com/KUSTIKs/kustik-screenshot/v0.2.0/docs/screenshots/share.png</image>
+    </screenshot>
+  </screenshots>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.2.0" date="2026-11-25">
+      <description>
+        <p>A new app ID (xyz.kustik.Screenshot), screenshots and details for software centers, and the GNOME 51 runtime.</p>
+      </description>
+    </release>
+    <release version="0.1.0" date="2026-11-25"/>
+  </releases>
+</component>

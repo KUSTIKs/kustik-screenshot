@@ -13,7 +13,7 @@ from pathlib import Path
 from gi.repository import GLib
 
 # Overridable so a test instance (nested compositor) never talks to your real one.
-APP_ID = os.environ.get("KUSTIK_APP_ID", "io.github.KUSTIKs.KustikScreenshot")
+APP_ID = os.environ.get("KUSTIK_APP_ID", "xyz.kustik.Screenshot")
 OBJECT_PATH = "/" + APP_ID.replace(".", "/")
 # The app's folder: this package, ui/ and (from source) helper/ live in it.
 ROOT = Path(__file__).resolve().parent.parent

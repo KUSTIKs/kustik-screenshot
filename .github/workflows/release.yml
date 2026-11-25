@@ -1,5 +1,6 @@
-# Builds the Flatpak on every push and pull request; on a version tag (v1.2.3)
-# also publishes kustik-screenshot.flatpak as a GitHub release asset.
+# Builds the Flatpak on every push and pull request. On a version tag (v1.2.3)
+# also publishes a GitHub release with kustik-screenshot.flatpak and the source
+# archive that builds offline (flatpak/dist.sh).
 name: Flatpak
 
 on:
@@ -21,20 +22,27 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - uses: dtolnay/rust-toolchain@stable
       - run: ./ui/build.sh
-      - run: cd helper && cargo vendor --locked ../flatpak/.vendor
+      - run: cd helper && cargo vendor --locked vendor
       - uses: actions/upload-artifact@v4
         with:
           name: prepared
           include-hidden-files: true
           path: |
             ui/dist
-            flatpak/.vendor
+            helper/vendor
+      - if: startsWith(github.ref, 'refs/tags/v')
+        run: ./flatpak/dist.sh "${GITHUB_REF_NAME#v}"
+      - if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: flatpak/dist
 
   flatpak:
     needs: prepare
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-49
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-51
       options: --privileged
     steps:
       - uses: actions/checkout@v4
@@ -44,10 +52,17 @@ jobs:
       - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
         with:
           bundle: kustik-screenshot.flatpak
-          manifest-path: flatpak/io.github.KUSTIKs.KustikScreenshot.yml
+          manifest-path: flatpak/xyz.kustik.Screenshot.yml
           cache-key: flatpak-builder-${{ github.sha }}
+      - if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
       - if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: kustik-screenshot.flatpak
+          files: |
+            kustik-screenshot.flatpak
+            dist/*
           generate_release_notes: true

@@ -103,22 +103,43 @@ README clips come from `site/tools/record.mjs` (see `docs/media/README.md`).
   Wayland socket. The manifest therefore shares the session's socket
   (`xdg-run/wayland-0..2`) as a file instead of `--socket=wayland`; the
   launcher finds it. Another display name:
-  `flatpak run --filesystem=xdg-run/NAME --env=KUSTIK_WAYLAND_DISPLAY=NAME io.github.KUSTIKs.KustikScreenshot`.
+  `flatpak run --filesystem=xdg-run/NAME --env=KUSTIK_WAYLAND_DISPLAY=NAME xyz.kustik.Screenshot`.
 - niri's IPC socket isn't reachable from the sandbox (its name changes each
   session), so click-a-window needs
   `flatpak run --filesystem=xdg-run/${NIRI_SOCKET##*/} …`; without it the app
   still finds the focused output through the compositor.
-- An app that can capture the whole screen isn't meaningfully confined: the
-  Flatpak is for packaging. Not suitable for Flathub as is.
-- A source-tree install's `~/.local/share/dbus-1/services/io.github.KUSTIKs.KustikScreenshot.service`
+- An app that can capture the whole screen isn't meaningfully confined; the
+  sandbox is about packaging and updates. The raw Wayland socket is the one
+  permission Flathub reviewers may ask about: without it, wlroots compositors
+  get the portal path (slower, and a window instead of an overlay).
+- A source-tree install's `~/.local/share/dbus-1/services/xyz.kustik.Screenshot.service`
   takes precedence over the Flatpak's: remove it when switching.
+
+## Releases
+
+1. Bump the version and date in `flatpak/xyz.kustik.Screenshot.metainfo.xml`
+   (add a `<release>` with a short description), commit.
+2. `git tag -a v1.2.3 -m "Kustik Screenshot 1.2.3" && git push origin v1.2.3`.
+   The Flatpak workflow builds and publishes the GitHub release with
+   `kustik-screenshot.flatpak` and `kustik-screenshot-1.2.3.tar.xz`: the
+   sources plus the UI bundle and vendored crates, so it builds offline
+   (`./flatpak/dist.sh 1.2.3` makes the same archive locally, from the
+   committed files). Release archives leave out `docs/media`,
+   `docs/screenshots`, `site` and `.github` (`.gitattributes`).
+
+Store screenshots are `docs/screenshots/*.png`, linked from the metainfo by
+tag; `site/tools/screenshots.mjs` retakes them from the website's stage at 2x.
+
+Flathub doesn't accept submissions, manifests or review replies made with AI
+tools (see its Generative AI policy): the Flathub manifest and submission are
+written by hand.
 
 ## Testing
 
 - `KUSTIK_DEV=1` adds an `eval` D-Bus action that runs JS in the UI, and dumps
   Python stacks on crashes / `kill -USR2`. `KUSTIK_DEVTOOLS=1` enables the
   WebKit inspector.
-- `KUSTIK_APP_ID=io.github.KUSTIKs.KustikScreenshot.Test` runs a separate
+- `KUSTIK_APP_ID=xyz.kustik.Screenshot.Test` runs a separate
   instance next to your real one.
 - A nested niri (`niri -c test.kdl` inside your session) is a safe sandbox. Its
   winit backend returns frames upside down: set `KUSTIK_FLIP_Y=1` there
@@ -126,7 +147,7 @@ README clips come from `site/tools/record.mjs` (see `docs/media/README.md`).
   throttled while not visible on your screen, so don't judge timing in it.
 
 ```sh
-gdbus call --session --dest io.github.KUSTIKs.KustikScreenshot.Test \
-  --object-path /io/github/KUSTIKs/KustikScreenshot/Test \
+gdbus call --session --dest xyz.kustik.Screenshot.Test \
+  --object-path /xyz/kustik/Screenshot/Test \
   --method org.gtk.Actions.Activate eval "[<'__capture.selectFull()'>]" "{}"
 ```

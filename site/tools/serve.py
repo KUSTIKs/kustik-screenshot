@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 # URL prefix → source (the same mapping as site/build.sh)
 MOUNTS = [
     ("/ui/", ROOT / "ui"),
-    ("/icon.svg", ROOT / "flatpak" / "io.github.KUSTIKs.KustikScreenshot.svg"),
+    ("/icon.svg", ROOT / "flatpak" / "xyz.kustik.Screenshot.svg"),
     ("/", ROOT / "site"),
 ]
 

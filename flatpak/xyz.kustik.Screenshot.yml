@@ -1,8 +1,12 @@
-# Flatpak manifest for Kustik Screenshot. Build with ./flatpak/build.sh (it prepares the
-# UI bundle and vendored Rust crates first, so the build itself is offline).
-id: io.github.KUSTIKs.KustikScreenshot
+# Flatpak manifest for Kustik Screenshot.
+#
+# Builds offline from a prepared source tree: the UI bundle (ui/dist) and the
+# Rust crates (helper/vendor) are generated first. Locally and in CI that's
+# the checkout (./flatpak/build.sh prepares it). The release archive
+# (./flatpak/dist.sh) has the same layout, for manifests that build from it.
+id: xyz.kustik.Screenshot
 runtime: org.gnome.Platform
-runtime-version: '49'
+runtime-version: '51'
 sdk: org.gnome.Sdk
 sdk-extensions:
   - org.freedesktop.Sdk.Extension.rust-stable
@@ -18,6 +22,7 @@ finish-args:
   - --filesystem=xdg-run/wayland-1
   - --filesystem=xdg-run/wayland-2
   - --socket=x11                 # X11 sessions (the launcher picks Wayland when there is one)
+  - --share=ipc                  # X11 shared memory
   - --device=dri                 # GPU video encoding (VAAPI) and WebKit rendering
   - --socket=pulseaudio          # microphone and system audio
   - --filesystem=xdg-pictures/Screenshots:create
@@ -40,6 +45,7 @@ modules:
       - type: git
         url: https://github.com/wmww/gtk4-layer-shell.git
         tag: v1.3.0
+        commit: 1c963c51514581c41b9bdae08cdf69171265cdda
 
   - name: wl-clipboard
     buildsystem: meson
@@ -50,25 +56,24 @@ modules:
       - type: git
         url: https://github.com/bugaevc/wl-clipboard.git
         tag: v2.3.0
+        commit: 67a7b937895bceec1ae5ccebb10216f63f70ca1b
 
   - name: kustik-screenshot-helper
     buildsystem: simple
+    subdir: helper
     build-options:
       append-path: /usr/lib/sdk/rust-stable/bin
       env:
         CARGO_HOME: /run/build/kustik-screenshot-helper/cargo
     build-commands:
-      - mkdir -p cargo && printf '[source.crates-io]\nreplace-with = "vendored"\n[source.vendored]\ndirectory = "vendor"\n' > cargo/config.toml
+      - mkdir -p /run/build/kustik-screenshot-helper/cargo
+      - printf '[source.crates-io]\nreplace-with = "vendored"\n[source.vendored]\ndirectory = "/run/build/kustik-screenshot-helper/helper/vendor"\n' > /run/build/kustik-screenshot-helper/cargo/config.toml
       - cargo build --release --offline
       - install -Dm755 target/release/kustik-screenshot-helper /app/bin/kustik-screenshot-helper
     sources:
       - type: dir
-        path: ../helper
-        skip:
-          - target
-      - type: dir
-        path: .vendor
-        dest: vendor
+        path: ..
+        skip: [helper/target, flatpak/.build, flatpak/.repo, flatpak/dist, .git, site, docs]
 
   - name: kustik-screenshot
     buildsystem: simple
@@ -77,28 +82,14 @@ modules:
       - find kustik_screenshot -name '*.py' -exec install -Dm644 {} /app/share/kustik-screenshot/{} ';'
       - install -Dm644 -t /app/share/kustik-screenshot/ui ui/index.html ui/styles.css
       - install -Dm644 -t /app/share/kustik-screenshot/ui/dist ui/dist/app.js
-      - install -Dm644 -t /app/share/kustik-screenshot/ui/fonts ui/fonts/*
-      - install -Dm644 flatpak/io.github.KUSTIKs.KustikScreenshot.desktop /app/share/applications/io.github.KUSTIKs.KustikScreenshot.desktop
-      - install -Dm644 flatpak/io.github.KUSTIKs.KustikScreenshot.svg /app/share/icons/hicolor/scalable/apps/io.github.KUSTIKs.KustikScreenshot.svg
-      - install -Dm644 flatpak/io.github.KUSTIKs.KustikScreenshot.metainfo.xml /app/share/metainfo/io.github.KUSTIKs.KustikScreenshot.metainfo.xml
+      - install -Dm644 -t /app/share/kustik-screenshot/ui/fonts ui/fonts/*.woff2
+      - install -Dm644 flatpak/xyz.kustik.Screenshot.desktop /app/share/applications/xyz.kustik.Screenshot.desktop
+      - install -Dm644 flatpak/xyz.kustik.Screenshot.svg /app/share/icons/hicolor/scalable/apps/xyz.kustik.Screenshot.svg
+      - install -Dm644 flatpak/xyz.kustik.Screenshot.metainfo.xml /app/share/metainfo/xyz.kustik.Screenshot.metainfo.xml
       # D-Bus activation: the shortcut reaches the app even if it isn't running yet.
       - mkdir -p /app/share/dbus-1/services
-      - printf '[D-BUS Service]\nName=io.github.KUSTIKs.KustikScreenshot\nExec=/app/bin/kustik-screenshot --gapplication-service\n' > /app/share/dbus-1/services/io.github.KUSTIKs.KustikScreenshot.service
+      - printf '[D-BUS Service]\nName=xyz.kustik.Screenshot\nExec=/app/bin/kustik-screenshot --gapplication-service\n' > /app/share/dbus-1/services/xyz.kustik.Screenshot.service
     sources:
       - type: dir
         path: ..
-        skip:
-          - helper
-          - flatpak/.vendor
-          - flatpak/.build
-          - flatpak/.repo
-          - ui/js
-          - __pycache__
-          - .git
-          - .github
-          - .flatpak-builder
-          - flatpak_app
-          - repo
-          - docs
-          - site
-          - kustik-screenshot.flatpak
+        skip: [helper, flatpak/.build, flatpak/.repo, flatpak/dist, .git, site, docs]

@@ -11,9 +11,9 @@ echo "• Bundling the UI…"
 
 echo "• Registering the D-Bus service (the shortcut can start it on demand)…"
 mkdir -p "$HOME/.local/share/dbus-1/services"
-cat > "$HOME/.local/share/dbus-1/services/io.github.KUSTIKs.KustikScreenshot.service" <<SVC
+cat > "$HOME/.local/share/dbus-1/services/xyz.kustik.Screenshot.service" <<SVC
 [D-BUS Service]
-Name=io.github.KUSTIKs.KustikScreenshot
+Name=xyz.kustik.Screenshot
 Exec=$APP/kustik-screenshot --gapplication-service
 SVC
 
@@ -22,9 +22,9 @@ ln -sf "$APP/kustik-screenshot" "$HOME/.local/bin/kustik-screenshot"
 
 echo "• Adding it to your app menu…"
 mkdir -p "$HOME/.local/share/applications" "$HOME/.local/share/icons/hicolor/scalable/apps"
-sed "s#^Exec=kustik-screenshot#Exec=$APP/kustik-screenshot#" "$APP/flatpak/io.github.KUSTIKs.KustikScreenshot.desktop" \
-  > "$HOME/.local/share/applications/io.github.KUSTIKs.KustikScreenshot.desktop"
-cp "$APP/flatpak/io.github.KUSTIKs.KustikScreenshot.svg" "$HOME/.local/share/icons/hicolor/scalable/apps/"
+sed "s#^Exec=kustik-screenshot#Exec=$APP/kustik-screenshot#" "$APP/flatpak/xyz.kustik.Screenshot.desktop" \
+  > "$HOME/.local/share/applications/xyz.kustik.Screenshot.desktop"
+cp "$APP/flatpak/xyz.kustik.Screenshot.svg" "$HOME/.local/share/icons/hicolor/scalable/apps/"
 
 missing=()
 for e in qtdemux avdec_h264 autoaudiosink; do gst-inspect-1.0 --exists "$e" || missing+=("$e"); done

@@ -23,7 +23,7 @@ cp ui/index.html ui/styles.css "$OUT/ui/"
 cp -r ui/fonts "$OUT/ui/"
 # The UI bundle, minified and without the debug source map ui/build.sh adds.
 bun build ui/js/main.js --outfile "$OUT/ui/dist/app.js" --format iife --target browser --minify >/dev/null
-cp flatpak/io.github.KUSTIKs.KustikScreenshot.svg "$OUT/icon.svg"
+cp flatpak/xyz.kustik.Screenshot.svg "$OUT/icon.svg"
 # GitHub Pages reads the custom domain from this file; other hosts ignore it.
 [ -n "$DOMAIN" ] && echo "$DOMAIN" > "$OUT/CNAME"
 echo "built $OUT ($(du -sh "$OUT" | cut -f1))"

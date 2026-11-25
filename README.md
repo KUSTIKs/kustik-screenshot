@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="flatpak/io.github.KUSTIKs.KustikScreenshot.svg" width="96" alt="">
+<img src="flatpak/xyz.kustik.Screenshot.svg" width="96" alt="">
 
 # Kustik Screenshot
 
