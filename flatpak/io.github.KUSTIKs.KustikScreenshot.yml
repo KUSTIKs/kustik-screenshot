@@ -1,0 +1,104 @@
+# Flatpak manifest for Kustik Screenshot. Build with ./flatpak/build.sh (it prepares the
+# UI bundle and vendored Rust crates first, so the build itself is offline).
+id: io.github.KUSTIKs.KustikScreenshot
+runtime: org.gnome.Platform
+runtime-version: '49'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: kustik-screenshot
+
+finish-args:
+  # The overlay is a layer-shell surface and frames come from wlr-screencopy.
+  # Compositors (niri among them) hide those protocols from clients that come
+  # through Flatpak's Wayland socket, which is tagged as sandboxed. So instead
+  # of --socket=wayland the app gets the session's own socket as a file; the
+  # launcher finds it. Covers the usual display names.
+  - --filesystem=xdg-run/wayland-0
+  - --filesystem=xdg-run/wayland-1
+  - --filesystem=xdg-run/wayland-2
+  - --socket=x11                 # X11 sessions (the launcher picks Wayland when there is one)
+  - --device=dri                 # GPU video encoding (VAAPI) and WebKit rendering
+  - --socket=pulseaudio          # microphone and system audio
+  - --filesystem=xdg-pictures/Screenshots:create
+  - --filesystem=xdg-videos/Recordings:create
+  # Recording indicator in the system tray (StatusNotifierItem).
+  - --talk-name=org.kde.StatusNotifierWatcher
+  - --own-name=org.kde.*
+
+modules:
+  - name: gtk4-layer-shell
+    buildsystem: meson
+    config-opts:
+      - -Dexamples=false
+      - -Ddocs=false
+      - -Dtests=false
+      - -Dsmoke-tests=false
+      - -Dintrospection=true
+      - -Dvapi=false
+    sources:
+      - type: git
+        url: https://github.com/wmww/gtk4-layer-shell.git
+        tag: v1.3.0
+
+  - name: wl-clipboard
+    buildsystem: meson
+    config-opts:
+      - -Dzshcompletiondir=no
+      - -Dfishcompletiondir=no
+    sources:
+      - type: git
+        url: https://github.com/bugaevc/wl-clipboard.git
+        tag: v2.3.0
+
+  - name: kustik-screenshot-helper
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/rust-stable/bin
+      env:
+        CARGO_HOME: /run/build/kustik-screenshot-helper/cargo
+    build-commands:
+      - mkdir -p cargo && printf '[source.crates-io]\nreplace-with = "vendored"\n[source.vendored]\ndirectory = "vendor"\n' > cargo/config.toml
+      - cargo build --release --offline
+      - install -Dm755 target/release/kustik-screenshot-helper /app/bin/kustik-screenshot-helper
+    sources:
+      - type: dir
+        path: ../helper
+        skip:
+          - target
+      - type: dir
+        path: .vendor
+        dest: vendor
+
+  - name: kustik-screenshot
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 kustik-screenshot /app/bin/kustik-screenshot
+      - find kustik_screenshot -name '*.py' -exec install -Dm644 {} /app/share/kustik-screenshot/{} ';'
+      - install -Dm644 -t /app/share/kustik-screenshot/ui ui/index.html ui/styles.css
+      - install -Dm644 -t /app/share/kustik-screenshot/ui/dist ui/dist/app.js
+      - install -Dm644 -t /app/share/kustik-screenshot/ui/fonts ui/fonts/*
+      - install -Dm644 flatpak/io.github.KUSTIKs.KustikScreenshot.desktop /app/share/applications/io.github.KUSTIKs.KustikScreenshot.desktop
+      - install -Dm644 flatpak/io.github.KUSTIKs.KustikScreenshot.svg /app/share/icons/hicolor/scalable/apps/io.github.KUSTIKs.KustikScreenshot.svg
+      - install -Dm644 flatpak/io.github.KUSTIKs.KustikScreenshot.metainfo.xml /app/share/metainfo/io.github.KUSTIKs.KustikScreenshot.metainfo.xml
+      # D-Bus activation: the shortcut reaches the app even if it isn't running yet.
+      - mkdir -p /app/share/dbus-1/services
+      - printf '[D-BUS Service]\nName=io.github.KUSTIKs.KustikScreenshot\nExec=/app/bin/kustik-screenshot --gapplication-service\n' > /app/share/dbus-1/services/io.github.KUSTIKs.KustikScreenshot.service
+    sources:
+      - type: dir
+        path: ..
+        skip:
+          - helper
+          - flatpak/.vendor
+          - flatpak/.build
+          - flatpak/.repo
+          - ui/js
+          - __pycache__
+          - .git
+          - .github
+          - .flatpak-builder
+          - flatpak_app
+          - repo
+          - docs
+          - site
+          - kustik-screenshot.flatpak

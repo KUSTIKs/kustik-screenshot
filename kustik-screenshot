@@ -1,0 +1,27 @@
+#!/bin/bash
+# Kustik Screenshot launcher: gtk4-layer-shell must be loaded before libwayland-client.
+# Works from the source tree and when installed (Flatpak: /app/share/kustik-screenshot).
+DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+[ -d "$DIR/kustik_screenshot" ] || DIR="$(dirname "$DIR")/share/kustik-screenshot"
+
+# Flatpak: the session's Wayland socket is shared as a plain file (see the
+# manifest), so WAYLAND_DISPLAY isn't set for us. Use the one we were given.
+if [ -f /.flatpak-info ] && [ ! -S "$XDG_RUNTIME_DIR/${WAYLAND_DISPLAY:-none}" ]; then
+  WAYLAND_DISPLAY="${KUSTIK_WAYLAND_DISPLAY:-}"
+  if [ ! -S "$XDG_RUNTIME_DIR/${WAYLAND_DISPLAY:-none}" ]; then
+    for s in "$XDG_RUNTIME_DIR"/wayland-[0-9]; do [ -S "$s" ] && { WAYLAND_DISPLAY="${s##*/}"; break; }; done
+  fi
+  if [ -n "$WAYLAND_DISPLAY" ]; then export WAYLAND_DISPLAY; else unset WAYLAND_DISPLAY; export GDK_BACKEND=x11; fi
+fi
+
+# GTK's OpenGL renderer: WebKit hands frames over as GPU buffers, and with
+# GTK's Vulkan renderer (the default in newer GTK, e.g. the Flatpak runtime)
+# that handoff stalls and the UI updates in visible jerks.
+export GSK_RENDERER="${GSK_RENDERER:-gl}"
+
+for lib in /app/lib/libgtk4-layer-shell.so /usr/lib/libgtk4-layer-shell.so /usr/lib64/libgtk4-layer-shell.so \
+           /usr/lib/x86_64-linux-gnu/libgtk4-layer-shell.so; do
+  if [ -e "$lib" ]; then export LD_PRELOAD="$lib${LD_PRELOAD:+:$LD_PRELOAD}"; break; fi
+done
+export PYTHONPATH="$DIR${PYTHONPATH:+:$PYTHONPATH}"
+exec python3 -m kustik_screenshot "$@"

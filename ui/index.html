@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kustik Screenshot</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<canvas id="scene"></canvas>
+
+<div id="ui">
+  <!-- Pinned captures float here, above every window -->
+  <div id="pins"></div>
+
+  <!-- Selecting -->
+  <div id="modebar" class="glass float modebar" data-glass>
+    <div class="seg" role="radiogroup" aria-label="Capture type">
+      <span class="seg-ind"></span>
+      <button class="btn" role="radio" data-kind="photo" data-icon="camera">Photo</button>
+      <button class="btn" role="radio" data-kind="video" data-icon="video">Video</button>
+    </div>
+    <span class="sep"></span>
+    <span class="hint">Drag to select <i>·</i> Click a window <i>·</i> <kbd>Space</kbd> Full screen</span>
+    <span class="sep"></span>
+    <button class="btn icon" data-act="cancel" data-icon="close" data-tip="Cancel" data-key="Esc" aria-label="Cancel"></button>
+  </div>
+  <div id="sizelabel" class="glass float passive sizelabel" data-glass></div>
+
+  <!-- Editing a screenshot -->
+  <div id="toolbar" class="glass float toolbar" data-glass>
+    <div class="tools">
+      <button class="btn icon" data-tool="select" data-icon="cursor" data-tip="Move & resize" data-key="V" aria-label="Move and resize"></button>
+      <button class="btn icon" data-tool="arrow" data-icon="arrow" data-tip="Arrow" data-key="A" aria-label="Arrow"></button>
+      <button class="btn icon" data-tool="rect" data-icon="rect" data-tip="Rectangle" data-key="R" aria-label="Rectangle"></button>
+      <button class="btn icon" data-tool="pen" data-icon="pen" data-tip="Pen" data-key="P" aria-label="Pen"></button>
+      <button class="btn icon" data-tool="text" data-icon="text" data-tip="Text" data-key="T" aria-label="Text"></button>
+      <button class="btn icon" data-tool="hl" data-icon="hl" data-tip="Highlighter" data-key="H" aria-label="Highlighter"></button>
+      <button class="btn icon" data-tool="blur" data-icon="blur" data-tip="Pixelate" data-key="B" aria-label="Pixelate"></button>
+      <button class="btn icon" data-tool="num" data-icon="num" data-tip="Step number" data-key="N" aria-label="Step number"></button>
+    </div>
+    <span class="sep"></span>
+    <button class="btn icon color-btn" id="colorBtn" data-act="color" data-tip="Color & size" data-key="1–5" aria-label="Color and size"><span class="dot"></span></button>
+    <span class="sep"></span>
+    <button class="btn icon" data-act="undo" data-icon="undo" data-tip="Undo" data-key="Ctrl Z" aria-label="Undo"></button>
+    <button class="btn icon" data-act="redo" data-icon="redo" data-tip="Redo" data-key="Ctrl ⇧ Z" aria-label="Redo"></button>
+    <span class="sep"></span>
+    <button class="btn icon" data-act="pin" data-icon="pin" data-tip="Pin to screen" data-key="Ctrl P" aria-label="Pin"></button>
+    <button class="btn icon" data-act="save" data-icon="save" data-tip="Save" data-key="Ctrl S" aria-label="Save"></button>
+    <button class="btn primary" data-act="copy"><span class="pl">Copy</span><kbd class="enter" data-icon="enter"></kbd></button>
+  </div>
+  <div id="colorPop" class="glass float popover" data-glass>
+    <div class="swatches"></div>
+    <span class="sep"></span>
+    <div class="widths"></div>
+  </div>
+
+  <!-- One bar, three states (setup → counting → recording). Controls keep
+       their identity across states (data-k) and move/reshape between them;
+       data-in lists the states each one appears in. -->
+  <div id="readybar" class="glass float readybar" data-glass data-state="setup">
+    <div class="split" data-split="mic" data-k="mic" data-in="setup">
+      <button class="btn toggle" data-opt="mic" data-icon="mic" aria-pressed="false" data-tip="Microphone"><span class="lbl">Mic</span><span class="meter" aria-hidden="true"><i></i><i></i><i></i></span></button>
+      <button class="btn chev" data-menu="mic" data-icon="chevron" aria-label="Choose microphone" aria-haspopup="menu"></button>
+    </div>
+    <button class="btn toggle solo" data-opt="sys" data-icon="speaker" aria-pressed="true" data-tip="Record system audio" data-k="sys" data-in="setup"><span class="lbl">System</span></button>
+    <button class="btn toggle solo" data-opt="clicks" data-icon="cursor" aria-pressed="true" data-tip="Show the pointer in the video" data-k="clicks" data-in="setup"><span class="lbl">Cursor</span></button>
+
+    <span class="rb-status" data-k="status" data-in="counting recording" aria-live="polite">
+      <span class="recdot live" data-k="dot" data-in="counting recording"></span>
+      <span class="st" data-k="st-count" data-in="counting">Recording in <b class="cd-num">3</b></span>
+      <span class="st rtime" data-k="st-time" data-in="recording">0:00</span>
+    </span>
+    <span class="rmic" data-icon="mic" data-tip="Microphone level" data-k="rmic" data-in="recording"><span class="meter" aria-hidden="true"><i></i><i></i><i></i></span></span>
+
+    <span class="sep" data-k="sep" data-in="setup counting recording"></span>
+
+    <button class="btn" data-act="cd-cancel" data-k="cancel" data-in="counting">Cancel <kbd>Esc</kbd></button>
+    <button class="btn icon" data-act="pause" data-tip="Pause" data-key="Space" aria-label="Pause" data-k="pause" data-in="recording"></button>
+
+    <!-- The one red button: Record → Start now → Stop -->
+    <button class="btn recbtn" data-act="start" data-k="primary" data-in="setup counting recording">
+      <span class="bg"></span>
+      <span class="pl" data-k="pl-setup" data-in="setup"><span class="recdot"></span>Record <kbd class="enter" data-icon="enter"></kbd></span>
+      <span class="pl" data-k="pl-count" data-in="counting">Start now <kbd class="enter" data-icon="enter"></kbd></span>
+      <span class="pl" data-k="pl-rec" data-in="recording"><span class="sq"></span></span>
+    </button>
+    <button class="btn icon" data-act="discard" data-icon="trash" data-tip="Discard" data-key="Esc Esc" aria-label="Discard" data-k="discard" data-in="recording"></button>
+
+    <span class="rmsg" data-k="rmsg" data-in="arm">Press <kbd>Esc</kbd> again to discard</span>
+  </div>
+  <div id="srcMenu" class="glass float menu" data-glass role="menu"></div>
+
+  <!-- First run (opened from the app menu): one more pill, in the mode bar's place,
+       built from the same parts. -->
+  <div id="welcome" class="glass float modebar welcome" data-glass role="dialog" aria-label="Kustik Screenshot">
+    <span class="w-app"><svg class="mark" viewBox="3.5 4.37 13 11.2" aria-hidden="true"><path d="M11.8574 14.6426L12.7861 15.1075V15.5713H7.21387V15.1075L8.14258 14.6426V13.7139H6.20801C4.71249 13.7137 3.50016 12.4203 3.5 10.8243C3.5 9.49706 4.33824 8.37847 5.48047 8.03911C5.18478 6.81376 5.67307 5.48005 6.75 4.81645C7.82689 4.1529 9.1535 4.3681 10 5.25395C10.8465 4.36809 12.1731 4.1529 13.25 4.81645C14.3269 5.48004 14.8152 6.81376 14.5195 8.03911C15.6618 8.37847 16.5 9.49707 16.5 10.8243C16.4998 12.4203 15.2875 13.7137 13.792 13.7139H11.8574V14.6426Z"/></svg>Kustik Screenshot</span>
+    <span class="sep"></span>
+    <span class="hint"><span class="pl" id="wHint"></span></span>
+    <span class="sep"></span>
+    <button class="btn toggle solo" data-wact="shortcut"><span class="pl"></span></button>
+    <button class="btn toggle solo" data-wact="login" data-icon="login" aria-pressed="false" hidden><span class="lbl">Start on login</span></button>
+    <button class="btn primary" data-wact="try"><span class="pl">Try it</span></button>
+    <span class="sep"></span>
+    <button class="btn icon" data-wact="close" data-icon="close" aria-label="Close"></button>
+  </div>
+
+  <div id="wNote" class="glass float tip w-note" data-glass role="status"></div>
+
+  <div id="toast" class="glass toast" data-glass role="status"></div>
+  <div id="tip" class="glass float passive tip" data-glass></div>
+  <div id="texted" class="texted" contenteditable="plaintext-only" spellcheck="false"></div>
+</div>
+
+<script src="dist/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,618 @@
+/* Geist (SIL Open Font License, fonts/OFL.txt): bundled, so the app works offline. */
+@font-face { font-family: "Geist"; src: url("fonts/Geist-Regular.woff2") format("woff2"); font-weight: 400; font-display: block; }
+@font-face { font-family: "Geist"; src: url("fonts/Geist-Medium.woff2") format("woff2"); font-weight: 500; font-display: block; }
+@font-face { font-family: "Geist"; src: url("fonts/Geist-SemiBold.woff2") format("woff2"); font-weight: 600; font-display: block; }
+@font-face { font-family: "Geist"; src: url("fonts/Geist-Bold.woff2") format("woff2"); font-weight: 700; font-display: block; }
+@font-face { font-family: "Geist Mono"; src: url("fonts/GeistMono-Regular.woff2") format("woff2"); font-weight: 400; font-display: block; }
+@font-face { font-family: "Geist Mono"; src: url("fonts/GeistMono-Medium.woff2") format("woff2"); font-weight: 500; font-display: block; }
+@font-face { font-family: "Geist Mono"; src: url("fonts/GeistMono-SemiBold.woff2") format("woff2"); font-weight: 600; font-display: block; }
+
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --fg: rgba(255, 255, 255, 0.95);
+  --fg-2: rgba(255, 255, 255, 0.62);
+  --fg-3: rgba(255, 255, 255, 0.4);
+  --hair: rgba(255, 255, 255, 0.14);
+  --red: #ff3b30;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; margin: 0; }
+[hidden] { display: none !important; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  /* The overlay is transparent: the desktop (or the frozen screen) is behind it. */
+  background: transparent;
+  color: var(--fg);
+  font-family: "Geist", ui-sans-serif, system-ui, sans-serif;
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#scene { position: fixed; inset: 0; display: block; touch-action: none; }
+#ui { position: fixed; inset: 0; pointer-events: none; }
+#ui > * { pointer-events: auto; }
+#ui > .passive { pointer-events: none; }
+
+/* ---------- glass surfaces (CSS backdrop-filter)
+   One tint everywhere, so a surface looks the same in every state (setup,
+   recording, editor, toast). It's the colour the editor card used to show:
+   60% card over the 55% dimming = this, applied directly. */
+.glass {
+  position: fixed;
+  border-radius: 16px;
+  background: rgba(19, 19, 25, 0.82);
+  backdrop-filter: blur(18px) saturate(1.7);
+  -webkit-backdrop-filter: blur(18px) saturate(1.7);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+
+/* Shared enter/exit for floating surfaces: scale from 0.96, never from 0. */
+.float {
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(0.96);
+  transition:
+    opacity 140ms var(--ease-out),
+    transform 140ms var(--ease-out),
+    visibility 0s linear 140ms;
+}
+.float.show {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition:
+    opacity 200ms var(--ease-out),
+    transform 200ms var(--ease-out),
+    visibility 0s;
+}
+.float.instant, .float.instant.show { transition: none; }
+
+/* ---------- controls */
+.btn {
+  height: 32px;
+  min-width: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  background: transparent;
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease, transform 120ms var(--ease-out);
+}
+.btn.icon { padding: 0; width: 32px; }
+.btn:active { transform: scale(0.96); }
+.btn:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.6); outline-offset: 1px; }
+.btn:disabled { opacity: 0.32; pointer-events: none; }
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover { background: rgba(255, 255, 255, 0.1); }
+}
+.btn svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+kbd.enter { display: inline-grid; place-items: center; padding: 2px 4px; }
+kbd.enter svg { width: 12px; height: 12px; stroke-width: 2.2; }
+kbd {
+  font-family: "Geist Mono", ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  padding: 3px 5px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--fg-2);
+}
+
+.sep { width: 1px; height: 18px; background: var(--hair); margin: 0 5px; flex: none; }
+
+/* ---------- launcher (idle) */
+.launcher, .modebar {
+  left: 0;
+  right: 0;
+  margin-inline: auto;
+  width: max-content;
+  display: flex;
+  align-items: center;
+  padding: 6px;
+  border-radius: 999px;
+}
+.launcher { bottom: 24px; }
+.launcher .btn { border-radius: 999px; padding: 0 8px 0 12px; height: 34px; }
+.launcher .btn:first-child { padding-left: 11px; }
+
+/* ---------- mode bar (selecting) */
+.modebar { top: 44px; gap: 2px; padding: 5px 5px 5px 5px; transform-origin: top center; }
+.modebar.away { opacity: 0 !important; transition: opacity 120ms var(--ease-out) !important; pointer-events: none; }
+.seg { position: relative; display: flex; padding: 2px; border-radius: 999px; background: rgba(0, 0, 0, 0.22); }
+.seg .btn { position: relative; z-index: 1; width: 92px; height: 28px; border-radius: 999px; color: var(--fg-2); }
+.seg .btn.on { color: var(--fg); }
+@media (hover: hover) and (pointer: fine) { .seg .btn:hover { background: transparent; color: var(--fg); } }
+.seg-ind {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 92px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.17);
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.28), 0 1px 6px rgba(0, 0, 0, 0.18);
+  transform-origin: center;
+  will-change: transform, width;
+}
+
+.hint { color: var(--fg-2); padding: 0 6px; display: flex; align-items: center; gap: 6px; }
+
+/* ---------- welcome (first run): the mode bar's place and parts */
+.welcome { gap: 2px; }
+.w-app { display: inline-flex; align-items: center; gap: 7px; padding: 0 8px 0 10px; font-weight: 600; letter-spacing: -0.005em; white-space: nowrap; }
+/* kustik's mark, set like a letter: the crown spans the capitals, the trunk
+   drops below the baseline like a descender (13px text: caps 10px). */
+.w-app svg { height: 12px; width: auto; fill: currentColor; transform: translateY(0.5px); }
+.welcome .hint .pl { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; transition: filter 180ms ease, opacity 180ms ease; }
+.welcome .hint .pl.swap, .welcome .btn .pl.swap { filter: blur(3px); opacity: 0.4; }
+.welcome .hint b { color: var(--fg); font-weight: 500; }
+.welcome .btn .pl { display: inline-flex; align-items: center; gap: 7px; transition: filter 180ms ease, opacity 180ms ease; }
+.welcome .btn { border-radius: 999px; }
+.welcome .primary { margin-left: 4px; padding: 0 14px; }
+/* Under the pill, growing from its edge (like a tooltip from its trigger). */
+.w-note { width: max-content; color: var(--fg-2); padding: 7px 12px; transform-origin: top center; }
+.w-note b { color: var(--fg); font-weight: 500; }
+.hint i { font-style: normal; color: var(--fg-3); }
+.modebar .btn.icon { border-radius: 999px; }
+
+
+.sizelabel {
+  padding: 5px 8px;
+  border-radius: 8px;
+  font-family: "Geist Mono", ui-monospace, monospace;
+  font-size: 11.5px;
+  white-space: nowrap;
+  transform-origin: left bottom;
+}
+.sizelabel b { font-family: "Geist", sans-serif; font-weight: 500; color: var(--fg); margin-right: 6px; }
+.sizelabel span { color: var(--fg-2); }
+
+/* ---------- toolbar */
+.toolbar { display: flex; align-items: center; padding: 6px; border-radius: 16px; }
+.tools { position: relative; display: flex; gap: 2px; }
+.tools .btn { position: relative; z-index: 1; color: var(--fg-2); }
+.tools .btn.on { color: var(--fg); }
+@media (hover: hover) and (pointer: fine) {
+  .tools .btn:hover { color: var(--fg); background: rgba(255, 255, 255, 0.07); }
+  .tools .btn.on:hover { background: rgba(255, 255, 255, 0.2); }
+}
+.tools .btn.on { background: rgba(255, 255, 255, 0.17); box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.25); }
+.color-btn .dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--c, #ff453a);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9), 0 0 0 3px rgba(0, 0, 0, 0.25);
+  transform: scale(var(--s, 1));
+  transition: transform 160ms var(--ease-out);
+}
+.primary {
+  margin-left: 6px;
+  padding: 0 7px 0 12px;
+  background: #fff;
+  color: #0b0b0f;
+  font-weight: 600;
+}
+.primary kbd { background: rgba(0, 0, 0, 0.08); color: rgba(0, 0, 0, 0.5); }
+@media (hover: hover) and (pointer: fine) { .primary:hover { background: rgba(255, 255, 255, 0.88); } }
+.primary .pl { display: inline-flex; align-items: center; gap: 5px; transition: filter 180ms ease, opacity 180ms ease; }
+.primary .pl.swap { filter: blur(3px); opacity: 0.4; }
+.primary svg { width: 15px; height: 15px; stroke-width: 2.2; }
+
+/* ---------- color popover */
+.popover { display: flex; align-items: center; padding: 7px; border-radius: 14px; }
+.swatches, .widths { display: flex; gap: 2px; }
+.swatch, .width {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 120ms var(--ease-out), background-color 120ms ease;
+}
+.swatch:active, .width:active { transform: scale(0.92); }
+@media (hover: hover) and (pointer: fine) {
+  .swatch:hover, .width:hover { background: rgba(255, 255, 255, 0.08); }
+}
+.swatch i { width: 18px; height: 18px; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 1px rgba(0,0,0,.2); transition: box-shadow 140ms ease; }
+.swatch.on i { box-shadow: 0 0 0 2px rgba(10,10,14,.6), 0 0 0 3.5px #fff; }
+.width i { width: var(--s); height: var(--s); border-radius: 50%; background: var(--fg-2); }
+.width.on i { background: #fff; }
+
+/* ---------- ready bar */
+.readybar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px;
+  border-radius: 16px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+/* Corners round off into a pill as the bar becomes the recording control;
+   the glass reads the computed radius, so it morphs too. */
+.readybar.show { transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out), visibility 0s, border-radius 300ms var(--ease-out); }
+/* Each control lists the states it lives in. */
+.readybar[data-state="setup"] [data-in]:not([data-in~="setup"]),
+.readybar[data-state="counting"] [data-in]:not([data-in~="counting"]),
+.readybar[data-state="recording"] [data-in]:not([data-in~="recording"]),
+.readybar:not(.has-mic) [data-k="rmic"],
+.readybar.arm [data-in]:not([data-k="rmsg"]),
+.readybar.arm .sep { display: none; }
+.readybar.arm [data-k="rmsg"] { display: inline-flex; }
+.readybar[data-state="recording"] { border-radius: 22px; cursor: grab; touch-action: none; }
+.readybar[data-state="recording"].moving { cursor: grabbing; }
+
+.toggle { color: var(--fg-3); padding: 0 10px 0 8px; }
+.toggle .lbl { max-width: 132px; overflow: hidden; text-overflow: ellipsis; }
+.toggle.solo.on { color: var(--fg); background: rgba(255, 255, 255, 0.12); }
+/* Hover must never make an "off" toggle look "on": off only lifts a little. */
+@media (hover: hover) and (pointer: fine) {
+  .toggle:not(.on):hover { color: var(--fg-2); background: rgba(255, 255, 255, 0.05); }
+  .toggle.solo.on:hover { background: rgba(255, 255, 255, 0.16); }
+}
+
+/* Split button: toggle the source on/off, chevron picks which source. */
+.split { display: flex; align-items: center; border-radius: 10px; transition: background-color 120ms ease; }
+.split.on { background: rgba(255, 255, 255, 0.12); }
+.split.on .toggle { color: var(--fg); }
+.split .toggle { border-radius: 10px 0 0 10px; padding-right: 6px; }
+.split .chev { width: 24px; min-width: 24px; padding: 0; border-radius: 0 10px 10px 0; color: var(--fg-3); }
+.split.on .chev { color: var(--fg-2); box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.1); }
+.split .chev svg { width: 14px; height: 14px; stroke-width: 2; }
+.split .chev[aria-expanded="true"] { color: var(--fg); background: rgba(255, 255, 255, 0.1); }
+@media (hover: hover) and (pointer: fine) {
+  .split.on .toggle:hover, .split.on .chev:hover { background: rgba(255, 255, 255, 0.06); }
+  .split.on .toggle:hover { color: var(--fg); }
+}
+
+.meter { display: none; align-items: center; gap: 1.5px; height: 12px; margin-left: 1px; }
+.split.on .meter, .readybar.has-mic .rmic .meter { display: inline-flex; }
+.meter i { width: 2.5px; height: 12px; border-radius: 2px; background: #32d74b; transform: scaleY(0.18); transform-origin: center; }
+
+/* The red button is one element in every state; its background is a child
+   so it can stretch between "Record", "Start now" and the round Stop. */
+.recbtn { position: relative; margin-left: 4px; background: transparent; color: #fff; font-weight: 600; padding: 0 7px 0 12px; }
+.recbtn .bg { position: absolute; top: 0; bottom: 0; left: 0; right: 0; border-radius: 10px; background: var(--red); transition: border-radius 300ms var(--ease-out), background-color 120ms ease; }
+.recbtn .pl { position: relative; display: inline-flex; align-items: center; gap: 7px; }
+@media (hover: hover) and (pointer: fine) { .recbtn:hover { background: transparent; } .recbtn:hover .bg { background: #ff5147; } }
+.recbtn kbd { background: rgba(0, 0, 0, 0.16); color: rgba(255, 255, 255, 0.85); }
+.readybar[data-state="recording"] .recbtn { width: 32px; padding: 0; margin-left: 2px; }
+.readybar[data-state="recording"] .recbtn .bg { border-radius: 16px; }
+.recbtn .sq { width: 10px; height: 10px; border-radius: 2.5px; background: #fff; }
+.recdot { width: 8px; height: 8px; border-radius: 50%; background: #fff; flex: none; }
+
+/* Countdown lives in the record bar. */
+.rb-status { display: inline-flex; align-items: center; gap: 8px; padding: 0 8px 0 10px; height: 32px; }
+.rb-status .recdot { background: var(--red); box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.25); }
+.rb-status .st { color: var(--fg-2); }
+.rb-status .st b { color: var(--fg); font-weight: 600; font-variant-numeric: tabular-nums; display: inline-block; min-width: 9px; }
+
+/* ---------- source menu */
+.menu { width: 248px; padding: 6px; border-radius: 14px; }
+.menu-h { padding: 6px 10px 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--fg-3); }
+.menu-sep { height: 1px; margin: 5px 8px; background: var(--hair); }
+.menu-note { padding: 6px 10px 4px; font-size: 11.5px; line-height: 1.4; color: var(--fg-3); white-space: normal; }
+.mi {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px 7px 8px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 100ms ease;
+}
+@media (hover: hover) and (pointer: fine) { .mi:hover { background: rgba(255, 255, 255, 0.1); } }
+.mi:active { background: rgba(255, 255, 255, 0.14); }
+.mi svg { width: 15px; height: 15px; flex: none; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
+.mi.on svg { opacity: 1; }
+.mi span { display: flex; flex-direction: column; min-width: 0; }
+.mi b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mi small { font-size: 11.5px; color: var(--fg-3); }
+
+/* ---------- recording pill */
+.recdot.live { animation: pulse 1.6s ease-in-out infinite; }
+.readybar.paused .rb-status .recdot { animation: none; background: var(--fg-3); box-shadow: none; }
+.readybar.paused .rtime { color: var(--fg-2); }
+.rb-status .rtime {
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+  min-width: 32px;
+}
+.readybar[data-state="recording"] .btn.icon { border-radius: 999px; }
+.rmic { display: inline-flex; align-items: center; gap: 4px; margin-right: 4px; color: var(--fg-2); }
+.rmic svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.rmsg { display: none; align-items: center; gap: 6px; height: 32px; padding: 0 12px; color: var(--fg); white-space: nowrap; }
+
+/* ---------- toast (slides in from, and leaves toward, the right edge) */
+.toast {
+  right: 20px;
+  bottom: 20px;
+  width: 296px;
+  padding: 8px;
+  border-radius: 20px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(calc(100% + 28px));
+  transition:
+    transform 400ms var(--ease-out),
+    opacity 300ms var(--ease-out),
+    visibility 0s linear 400ms;
+  touch-action: pan-y;
+}
+.toast.show {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition: transform 400ms var(--ease-out), opacity 300ms var(--ease-out), visibility 0s;
+}
+.toast.dragging { transition: none; }
+.t-media {
+  position: relative;
+  border-radius: 13px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
+  aspect-ratio: 16 / 10;
+  display: grid;
+  place-items: center;
+  cursor: grab;
+}
+.t-media img, .t-media video { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: contain; -webkit-user-drag: element; }
+.t-row { display: flex; align-items: center; gap: 4px; padding: 8px 2px 2px 6px; }
+.t-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.t-text b { font-weight: 600; font-size: 13px; }
+.t-text span { color: var(--fg-2); font-size: 12px; font-variant-numeric: tabular-nums; }
+.t-acts { display: flex; gap: 0; }
+.t-acts .btn.icon { width: 30px; height: 30px; border-radius: 9px; color: var(--fg-2); }
+@media (hover: hover) and (pointer: fine) { .t-acts .btn.icon:hover { color: var(--fg); } }
+.t-acts .btn.on { color: var(--fg); background: rgba(255,255,255,.12); }
+
+.t-badge {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.55);
+  font: 500 11px/1 "Geist Mono", ui-monospace, monospace;
+  pointer-events: none;
+}
+.t-media video { cursor: pointer; }
+
+/* ---------- video editor
+   Radii step down from the panel inward (16 → 10 → 6), times use Geist with
+   tabular figures, and the transport control is a solid glyph. */
+.toast.expanded { overflow: hidden; border-radius: 16px; background: rgba(19, 19, 25, 0.94); }
+.toast.expanded .t-row { pointer-events: none; }
+/* Same surface as the toast thumbnail, so one grows into the other. */
+.ed-media { position: relative; border-radius: 10px; overflow: hidden; background: rgba(0, 0, 0, 0.3); }
+/* The video is sized to its picture by JS (it may be the toast's own element, flying in). */
+.ed-media video { position: absolute; display: block; }
+.ed-scrub { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ed-scrub { opacity: 0; pointer-events: none; }
+.ed-scrub.on { opacity: 1; }
+
+.ed-row { display: flex; align-items: flex-start; gap: 10px; padding: 14px 6px 0 4px; }
+.ed-play {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  margin-top: 4px; /* centred on the 44px filmstrip, not on strip + ruler */
+  border: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  color: #0b0b0f;
+  cursor: pointer;
+  transition: transform 120ms var(--ease-out), background-color 120ms ease;
+}
+.ed-play svg { width: 16px; height: 16px; }
+.ed-play:active { transform: scale(0.94); }
+@media (hover: hover) and (pointer: fine) { .ed-play:hover { background: rgba(255, 255, 255, 0.88); } }
+.ed-play:focus-visible { outline: 2px solid rgba(255, 255, 255, 0.6); outline-offset: 2px; }
+
+.ed-tl { flex: 1; min-width: 0; padding: 0 14px; }
+.ed-track { position: relative; height: 44px; touch-action: none; }
+.ed-film { position: absolute; inset: 0; border-radius: 6px; overflow: hidden; background: rgba(0, 0, 0, 0.4); }
+.ed-strip { position: absolute; inset: 0; display: flex; }
+.ed-strip canvas { height: 100%; flex: none; }
+.ed-shade { position: absolute; top: 0; bottom: 0; background: rgba(6, 6, 10, 0.66); pointer-events: none; }
+.ed-shade.l { left: 0; }
+.ed-shade.r { right: 0; }
+
+/* Kept range: a yellow frame; its handles sit outside it, so they never
+   cover a frame you're keeping or the playhead. */
+.ed-sel {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  left: 0;
+  border-top: 2px solid #ffd60a;
+  border-bottom: 2px solid #ffd60a;
+  pointer-events: none;
+}
+.ed-h {
+  --stretch: 1;
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 14px;
+  background: #ffd60a;
+  pointer-events: auto;
+  cursor: ew-resize;
+  display: grid;
+  place-items: center;
+  outline: none;
+  transition: transform 160ms var(--ease-out), background-color 120ms ease;
+}
+.ed-h.l { left: -14px; border-radius: 6px 0 0 6px; transform-origin: right center; transform: scaleX(var(--stretch)); }
+.ed-h.r { right: -14px; border-radius: 0 6px 6px 0; transform-origin: left center; transform: scaleX(var(--stretch)); }
+.ed-h b { width: 2px; height: 14px; border-radius: 1px; background: rgba(0, 0, 0, 0.55); box-shadow: -3px 0 0 -0.5px transparent; transition: box-shadow 160ms var(--ease-out); }
+/* Grabbed: swells a little and its grip spreads, like a thumb under a finger. */
+.ed-h.active { background: #ffe14d; }
+.ed-h.active b { box-shadow: 3px 0 0 0 rgba(0, 0, 0, 0.35), -3px 0 0 0 rgba(0, 0, 0, 0.35); }
+.ed-h.l.active { transform: scaleX(calc(var(--stretch) * 1.15)) scaleY(1.06); }
+.ed-h.r.active { transform: scaleX(calc(var(--stretch) * 1.15)) scaleY(1.06); }
+.ed-h:focus-visible { box-shadow: 0 0 0 2px #fff; }
+
+.ed-head { position: absolute; top: -6px; bottom: -6px; left: -1px; width: 2px; pointer-events: none; z-index: 2; }
+.ed-head::before { content: ""; position: absolute; inset: 0; border-radius: 1px; background: #fff; box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.4), 0 0 6px rgba(0, 0, 0, 0.4); }
+.ed-knob { position: absolute; top: -4px; left: -4px; width: 10px; height: 10px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5); }
+.ed-bubble {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 1px;
+  transform: translateX(-50%) translateY(4px);
+  padding: 3px 6px;
+  border-radius: 5px;
+  background: #fff;
+  color: #0b0b0f;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 120ms ease, transform 160ms var(--ease-out);
+}
+.ed-in.dragging .ed-bubble { opacity: 1; transform: translateX(-50%); }
+
+.ed-ruler { position: relative; height: 20px; margin-top: 8px; }
+.ed-ruler i { position: absolute; top: 0; font-style: normal; width: 1px; height: 3px; background: rgba(255, 255, 255, 0.2); transition: background-color 120ms ease; }
+.ed-ruler i.M { height: 5px; background: rgba(255, 255, 255, 0.42); }
+.ed-ruler i.M::after {
+  content: attr(data-l);
+  position: absolute;
+  top: 7px;
+  left: 0;
+  transform: translateX(-50%);
+  font-size: 10.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-3);
+  white-space: nowrap;
+}
+.ed-ruler i.hit { background: #ffd60a; }
+
+.ed-foot { display: flex; align-items: center; gap: 6px; padding: 8px 2px 2px; border-top: 1px solid var(--hair); margin-top: 6px; }
+.ed-fmt .btn { width: 72px; }
+.ed-fmt .seg-ind { width: 72px; }
+.ed-meta { margin-left: 6px; font-size: 12px; color: var(--fg-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ed-spacer { flex: 1; }
+.ed-in .btn { border-radius: 8px; }
+.ghost { background: rgba(255, 255, 255, 0.08); }
+.ed-go { position: relative; overflow: hidden; min-width: 104px; }
+.ed-prog { position: absolute; inset: 0; background: #ffd60a; transform: scaleX(0); transform-origin: left; }
+.ed-go .pl, .ed-go kbd { position: relative; }
+.ed-in.busy .ed-track, .ed-in.busy .ed-play, .ed-in.busy .ed-fmt, .ed-in.busy [data-ed="save"] { pointer-events: none; opacity: 0.5; }
+@media (max-width: 640px) { .ed-meta { display: none; } }
+
+@media (max-width: 1100px) { .toast { bottom: 80px; } }
+
+/* ---------- pins: floating captures above every window */
+#pins { position: fixed; inset: 0; pointer-events: none; }
+.pin {
+  position: fixed;
+  pointer-events: auto;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: grab;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.28);
+  touch-action: none;
+}
+.pin.moving { cursor: grabbing; }
+.pin img { display: block; width: 100%; height: 100%; -webkit-user-drag: none; }
+.pin-x {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(10, 10, 14, 0.72);
+  color: #fff;
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 120ms ease;
+}
+.pin:hover .pin-x { opacity: 1; }
+.pin-x svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+
+/* ---------- tooltip */
+.tip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 7px 6px 10px;
+  border-radius: 9px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.tip:not(:has(kbd)) { padding-right: 10px; }
+
+/* ---------- text annotation editor */
+.texted {
+  position: fixed;
+  display: none;
+  min-width: 6px;
+  outline: none;
+  white-space: pre;
+  font-weight: 600;
+  line-height: 1.2;
+  caret-color: currentColor;
+  text-shadow: 0 1.5px 8px rgba(0, 0, 0, 0.4);
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+}
+.texted.on { display: block; }
+
+@media (prefers-reduced-motion: reduce) {
+  .meter i { transition: none; }
+  .float, .float.show, .toast, .toast.show { transform: none !important; }
+  .float, .float.show, .toast, .toast.show { transition-property: opacity, visibility !important; }
+  .recdot.live { animation: none; }
+}
+.t-poster { cursor: pointer; }
+
+/* Still frame covering the video while it moves back into the thumbnail. */
+.t-still { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }

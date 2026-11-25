@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Kustik Screenshot
+Comment=Screenshots and screen recordings
+Exec=kustik-screenshot
+Icon=io.github.KUSTIKs.KustikScreenshot
+Terminal=false
+Categories=Utility;Graphics;
+Keywords=screenshot;screen;record;recording;capture;gif;
+DBusActivatable=false
+StartupNotify=false

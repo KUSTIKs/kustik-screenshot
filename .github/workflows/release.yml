@@ -1,0 +1,53 @@
+# Builds the Flatpak on every push and pull request; on a version tag (v1.2.3)
+# also publishes kustik-screenshot.flatpak as a GitHub release asset.
+name: Flatpak
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    # The Flatpak build is offline: bundle the UI and vendor the Rust crates first.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: dtolnay/rust-toolchain@stable
+      - run: ./ui/build.sh
+      - run: cd helper && cargo vendor --locked ../flatpak/.vendor
+      - uses: actions/upload-artifact@v4
+        with:
+          name: prepared
+          include-hidden-files: true
+          path: |
+            ui/dist
+            flatpak/.vendor
+
+  flatpak:
+    needs: prepare
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-49
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: prepared
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: kustik-screenshot.flatpak
+          manifest-path: flatpak/io.github.KUSTIKs.KustikScreenshot.yml
+          cache-key: flatpak-builder-${{ github.sha }}
+      - if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: kustik-screenshot.flatpak
+          generate_release_notes: true

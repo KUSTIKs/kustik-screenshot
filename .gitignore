@@ -1,0 +1,8 @@
+helper/target/
+ui/dist/
+__pycache__/
+flatpak/.vendor/
+flatpak/.build/
+flatpak/.repo/
+flatpak/kustik-screenshot.flatpak
+site/dist/

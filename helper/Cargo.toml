@@ -1,0 +1,19 @@
+[package]
+name = "kustik-screenshot-helper"
+version = "0.1.0"
+edition = "2021"
+description = "Screen capture backend for Kustik Screenshot: wlr-screencopy screenshots and raw frame streaming."
+
+[dependencies]
+wayland-client = "0.31"
+wayland-protocols = { version = "0.32", features = ["client", "unstable"] }
+wayland-protocols-wlr = { version = "0.3", features = ["client"] }
+png = "0.17"
+rustix = { version = "0.38", features = ["fs"] }
+memmap2 = "0.9"
+anyhow = "1"
+signal-hook = "0.3"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
